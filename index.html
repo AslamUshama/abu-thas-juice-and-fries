@@ -833,7 +833,7 @@
             return;
           }
           summaryEl.hidden = false;
-          orderBtn.disabled = false;
+          orderBtn.disabled = !!orderLock;
 
           Object.keys(cart).forEach(function (id) {
             var it = BY_ID[id];
@@ -904,6 +904,24 @@
         typeTakeawayBtn.addEventListener("click", function () { setOrderType("Takeaway"); });
 
         /* ---------- WhatsApp order ---------- */
+        var orderLock = false;
+        function isValidPhone(value) {
+          var v = value.trim();
+          if (!v) return false;
+          if (!/^\+?[\d\s\-]+$/.test(v)) return false;
+          var digits = v.replace(/[\s\-]/g, "");
+          var num = digits;
+          if (num.indexOf("+91") === 0) {
+            num = num.slice(3);
+          } else if (num.indexOf("+") === 0) {
+            return false;
+          } else if (num.length === 12 && num.indexOf("91") === 0) {
+            num = num.slice(2);
+          } else if (num.length === 11 && num.indexOf("0") === 0) {
+            num = num.slice(1);
+          }
+          return /^\d{10}$/.test(num);
+        }
         var orderErrorEl = document.getElementById("order-error");
         function showOrderError(msg) {
           orderErrorEl.textContent = msg;
@@ -918,6 +936,7 @@
           if (el) el.addEventListener("input", function () { el.classList.remove("invalid"); if (el.value.trim()) clearOrderError(); });
         });
         orderBtn.addEventListener("click", function () {
+          if (orderLock) return;
           if (cartCount() === 0) return;
           var nameEl = document.getElementById("cust-name");
           var addrEl = document.getElementById("cust-addr");
@@ -937,6 +956,13 @@
             missingEls.forEach(function (el) { el.classList.add("invalid"); });
             showOrderError("Please fill in the required field" + (missing.length > 1 ? "s" : "") + ": " + missing.join(", ") + ". Your order was not sent — please add the missing detail" + (missing.length > 1 ? "s" : "") + " and try again.");
             if (missingEls[0]) { missingEls[0].focus(); missingEls[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
+            return;
+          }
+          if (!isValidPhone(phone)) {
+            phoneEl.classList.add("invalid");
+            showOrderError("Phone Number: the phone number format is invalid. Please enter a valid 10-digit Indian mobile number — you can use +91, 91 or a leading 0, with spaces or hyphens — and try again. Your order was not sent.");
+            phoneEl.focus();
+            phoneEl.scrollIntoView({ block: "center", behavior: "smooth" });
             return;
           }
           clearOrderError();
@@ -960,6 +986,12 @@
           }
           var url = "https://wa.me/918270247614?text=" + encodeURIComponent(lines.join("\n"));
           window.open(url, "_blank", "noopener");
+          orderLock = true;
+          orderBtn.disabled = true;
+          setTimeout(function () {
+            orderLock = false;
+            if (cartCount() > 0) orderBtn.disabled = false;
+          }, 2500);
         });
 
         /* ---------- Toast ---------- */
@@ -981,11 +1013,11 @@
           var img = btn.querySelector("img");
           lbImg.src = src;
           lbImg.alt = img ? img.alt : "";
-          lbCap.innerHTML = "";
+          lbCap.textContent = "";
           var t = document.createTextNode(btn.getAttribute("data-title") || "");
           lbCap.appendChild(t);
           var sub = btn.getAttribute("data-sub");
-          if (sub) { var s = document.createElement("span"); s.innerHTML = sub; lbCap.appendChild(s); }
+          if (sub) { var s = document.createElement("span"); s.textContent = sub; lbCap.appendChild(s); }
           lightbox.classList.add("open");
           lightbox.setAttribute("aria-hidden", "false");
           document.body.style.overflow = "hidden";
